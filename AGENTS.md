@@ -16,6 +16,7 @@
 
 ```
 index.html   整個應用程式（HTML + CSS + JavaScript）
+icon-192.png 加到手機主畫面時的捷徑圖示（192×192）
 SPEC.md      功能規格
 AGENTS.md    本檔
 README.md    專案介紹與使用方式
