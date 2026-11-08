@@ -31,16 +31,16 @@ README.md    專案介紹與使用方式
 
 ## 程式架構（`index.html` 內 `<script>` 的區塊順序）
 
-第一個 `<script>` 只放預錄語音資料 `VOICE_DATA`（約 150KB，一行一段語音），修改程式時通常不用動它；主程式在第二個 `<script>`。
+第一個 `<script>` 只放預錄語音資料 `VOICE_DATA`（約 350KB，分 `zh`、`en` 兩種語言，一行一段語音），修改程式時通常不用動它；主程式在第二個 `<script>`。
 
 | 區塊註解 | 內容 |
 |---|---|
-| `預錄語音資料` | `VOICE_DATA`：鍵名對應 base64 MP3。`b8_prep_5`、`b8_g2_b1` 等是八拍／四拍結構的連續版（prep＝預備拍，g組_b拍，錄到第 4 組）；`w1`–`w16` 是單獨的「一」到「十六」 |
+| `預錄語音資料` | `VOICE_DATA.zh`（中文「曉臻」）、`VOICE_DATA.en`（英文「Michelle」）：鍵名對應 base64 MP3，兩種語言鍵名相同。`b8_prep_5`、`b8_g2_b1` 等是八拍／四拍結構的連續版（prep＝預備拍，g組_b拍，錄到第 4 組）；`w1`–`w16` 是單獨的「一」到「十六」 |
 | `音訊` | 共用的 `AudioContext`（`ac()`）、睡眠模式播放器 `player`（含 `duration()`、`position()`、`seek()`、`setRate()`）、進度條 `updateSeek()` |
 | `鈴聲` | `beep()`、`ringOnce()`、`startAlarm()`、`stopAlarm()` |
 | `螢幕常亮` | Wake Lock API 的 `wakeOn()`／`wakeOff()` |
 | `倒數計時` | 計時與睡眠模式共用的狀態、`start()`、`pause()`、`reset()`、`finish()`、`tick()` |
-| `節拍器` | 中文數字 `cn()`、拍點格子 `buildGrid()`、結構設定 `setStructure()`、預錄語音 `voice`／`voiceKey()`／`voiceAt()`／`voiceStop()`、備援語音 `speak()`、節拍聲 `clickAt()`、拍子產生器 `sequence()`、排程器 `scheduler()` |
+| `節拍器` | 中文數字 `cn()`、拍點格子 `buildGrid()`、結構設定 `setStructure()`、喊數語言 `setLang()`／`word()`／`updatePrepText()`、預錄語音 `voice`／`voiceKey()`／`voiceAt()`／`voiceStop()`、備援語音 `speak()`、節拍聲 `clickAt()`、拍子產生器 `sequence()`、排程器 `scheduler()` |
 | `模式切換` | `setMode()`，切換時會停止其他模式正在進行的動作 |
 | `事件`、`初始化` | 綁定按鈕事件、從 localStorage 還原設定 |
 
@@ -56,8 +56,8 @@ README.md    專案介紹與使用方式
 6. **語音優先用預錄版，並跟節拍聲一起排程。** 頁面載入時用 `OfflineAudioContext` 先把 `VOICE_DATA` 解碼（不需要使用者點按），`scheduler()` 排節拍聲時同時呼叫 `voiceAt()` 用同一個時間排定語音，所以語音準時。注意：
    - 解碼後會用 `trimLead()` 剪掉 MP3 開頭的靜音，各瀏覽器的 MP3 解碼開頭不一樣，不剪就會晚半拍。
    - `voiceKey()` 決定每一拍用哪段語音，改變拍子結構或預備拍規則時要一起檢查，確保每一拍都找得到語音。
-   - 預錄語音解碼失敗時（`voice.ready` 為 false）才改用 `speak()`（瀏覽器語音朗讀）。瀏覽器語音有不固定延遲，速度超過 120 時介面會顯示提醒，這個提醒要保留；使用預錄語音時則在超過 160 時提醒字尾可能被切掉。
-   - 重新產生語音：用 Python 套件 `edge-tts`，聲音 `zh-TW-HsiaoChenNeural`、語速 `+10%`，把整段以「、」分隔一口氣念完，再依 WordBoundary 時間點按字切開、剪掉前後靜音，轉成 24kHz 單聲道 32kbps MP3。
+   - 預錄語音解碼失敗時（`voice.ready[語言]` 為 false）才改用 `speak()`（瀏覽器語音朗讀）。瀏覽器語音有不固定延遲，速度超過 120 時介面會顯示提醒，這個提醒要保留；使用預錄語音時則在超過 160 時提醒字尾可能被切掉。
+   - 重新產生語音：用 Python 套件 `edge-tts`，中文聲音 `zh-TW-HsiaoChenNeural`、英文聲音 `en-US-MichelleNeural`，語速 `+10%`，把整段以「、」（英文用「, 」）分隔一口氣念完，再依 WordBoundary 時間點按字切開、剪掉前後靜音，轉成 24kHz 單聲道 32kbps MP3。
 7. **聲音必須由使用者操作啟動。** 手機瀏覽器要求在點按事件中才能啟用音訊與語音，所以 `start()`、`mStart()` 一開始都會呼叫 `ac()`；改用瀏覽器語音朗讀時，`mStart()` 也會先念一段空字串解鎖語音。
 
 ## 樣式規範
@@ -78,7 +78,7 @@ README.md    專案介紹與使用方式
 | `custom` | 自訂時間 `{m, s}` |
 | `vol` | 睡眠模式音量（0–100） |
 | `rate` | 睡眠模式播放速度（0.5、0.75、1、1.25、1.5、2） |
-| `metro` | 節拍器設定 `{bpm, groups, beats, rounds, unlimited, prep, voice, click, vol}`（舊資料缺 `groups`／`beats` 時以 4、8 補上） |
+| `metro` | 節拍器設定 `{bpm, groups, beats, rounds, unlimited, prep, voice, lang, click, vol}`（舊資料缺 `groups`／`beats` 時以 4、8 補上；`lang` 為 `zh`／`en`，缺少時用 `zh`） |
 
 更改資料格式時要相容舊資料，或改用新的鍵名。
 
@@ -95,6 +95,6 @@ README.md    專案介紹與使用方式
 - [ ] 節拍器：開啟預備拍時先數「五六七八」，接著數四個八拍；設定 2 輪會在第 2 輪結束時顯示「完成」。
 - [ ] 節拍器：改成 2 個四拍，格子變成 2 列 × 4 格，念「一二三四、二二三四」，預備拍為「一二三四」；播放中改結構會停止。
 - [ ] 節拍器的語音、節拍聲各自關閉時都正常；點按測速能算出合理速度。
-- [ ] 節拍器：四個結構按鈕、速度 80／100／120 下，預錄語音都跟節拍聲同時響起，字沒有被切掉開頭；改成 6 拍或 5 組以上也會念出正確的數字。
+- [ ] 節拍器：四個結構按鈕、速度 80／100／120 下，預錄語音都跟節拍聲同時響起，字沒有被切掉開頭；改成 6 拍或 5 組以上也會念出正確的數字。中文、English 兩種語言都要測，切換後預備拍說明也跟著變。
 - [ ] 重新整理頁面後，各項設定都會還原。
 - [ ] 淺色與深色模式下文字都清楚可讀。
